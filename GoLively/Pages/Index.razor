@@ -1,0 +1,48 @@
+﻿@page "/dev"
+@using GoLively.Services
+@using System.Collections.Specialized
+@using nexus.protocols.ble.scan
+
+@inject NotificationService _notice
+@inject BluetoothLEService ble
+
+<!-- Start: 2 Rows 1+1 Columns -->
+<div class="container">
+    <div class="row">
+        <div class="col-md-12 text-center"><button class="btn btn-primary" type="button" @onclick="() => ble.ScanForDevicesAsync()">Scan BLE</button></div>
+    </div>
+    <div class="row">
+        @foreach (var device in ble.DeviceCandidateList)
+        {
+            <div class="col-md-12 text-center"><button class="btn btn-secondary" type="button" @onclick="() => ConnectToDevice(device)">@device.Advertisement.DeviceName</button></div>
+        }
+    </div>
+</div><!-- End: 2 Rows 1+1 Columns -->
+@code {
+
+    protected override Task OnInitializedAsync()
+    {
+        ble._notice = _notice;
+        ble.DeviceCandidateList.CollectionChanged += DeviceCandidateListOnCollectionChanged;
+
+        return base.OnInitializedAsync();
+    }
+
+    private void DeviceCandidateListOnCollectionChanged(object sender, NotifyCollectionChangedEventArgs e) => StateHasChanged();
+
+    private async void ConnectToDevice(IBlePeripheral peripheral)
+    {
+        var gattServer = await ble.ConnectToDevice(peripheral);
+        if(gattServer == null) return;
+
+
+    }
+
+
+    private async Task Notice(string title, string message, NotificationType type = NotificationType.Info) => await _notice.Open(new()
+    {
+        Message = title,
+        Description = message,
+        NotificationType = type,
+    });
+}

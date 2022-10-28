@@ -1,0 +1,58 @@
+﻿@page "/"
+
+@using TwitchLib.Client
+@using TwitchLib.Client.Events
+@using Android.Media
+@using Android.Content
+
+<div style="background: #303030; height: 100vh;">
+    @foreach (var chat in chatList)
+    {
+        <p class="fs-2 text-white">@chat</p>
+    }
+</div>
+
+@code {
+
+    TwitchClient _client;
+    List<string> chatList = new();
+
+    readonly SpeechOptions _options = new()
+        {
+            //Pitch = 1f,   // 0.0 - 2.0
+            Volume = 1f, // 0.0 - 1.0
+        };
+
+    protected override Task OnInitializedAsync()
+    {
+        //Twitch
+        _client = new();
+        _client.Initialize(new("MarkenJaden", ""), "MarkenJaden");
+
+        _client.OnMessageReceived += Client_OnMessageReceived;
+
+        _client.Connect();
+
+
+        //YouTube
+        //var youtubeService = new YouTubeService(new()
+        //{
+        //        ApiKey = "",
+        //    ApplicationName = GetType().ToString()
+        //});
+
+        return base.OnInitializedAsync();
+    }
+
+    private async void Client_OnMessageReceived(object sender, OnMessageReceivedArgs e)
+    {
+        chatList.Insert(0, $"{e.ChatMessage.DisplayName}: {e.ChatMessage.Message}");
+        await InvokeAsync(StateHasChanged);
+
+        var audioManager = (AudioManager)Android.App.Application.Context.GetSystemService(Context.AudioService);
+        audioManager!.RequestAudioFocus(new AudioFocusRequestClass.Builder(AudioFocus.GainTransientMayDuck).Build()!);
+        await TextToSpeech.Default.SpeakAsync($"{e.ChatMessage.DisplayName} sagt: {e.ChatMessage.Message}", _options);
+        audioManager.AbandonAudioFocusRequest(new AudioFocusRequestClass.Builder(AudioFocus.GainTransientMayDuck).Build()!);
+    }
+
+}
